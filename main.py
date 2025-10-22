@@ -14,7 +14,7 @@ from src.visualization.feature_importance_plots import (
     plot_feature_comparison
 )
 from src.utils.helpers import setup_directories, set_seed
-
+from src.utils.helpers import safe_report, evaluate_with_threshold
 
 def main():
     setup_directories()   # makes sure artifacts/ folders exist
@@ -86,6 +86,10 @@ def main():
     plot_rf_feature_importance(rf_imp_df)
     plot_graphsage_importance(gs_imp_df)
     plot_feature_comparison(rf_imp_df, gs_imp_df)
+
+    # Safe Reporting:
+    metrics = safe_report(y_true, y_pred)
+    evaluate_with_threshold(y_true, y_prob)
 
 
 if __name__ == "__main__":
