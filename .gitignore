@@ -1,0 +1,35 @@
+# Ignore dataset files
+data/
+*.csv
+*.zip
+*.gz
+
+# Ignore generated artifacts
+artifacts/
+artifacts/*
+*.pt
+*.pkl
+*.npy
+
+# Ignore system files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db
+
+# Ignore Colab and virtual environment stuff
+.env/
+.venv/
+*.egg-info/
+*.log
+
+# Ignore IDE-specific files
+.vscode/
+.idea/
+
+# Ignore Google Drive mount path (Colab)
+content/
+drive/
