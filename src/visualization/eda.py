@@ -1,0 +1,68 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+import os
+
+sns.set_theme(style="whitegrid")
+
+def run_eda(merged_df, save_dir="artifacts/plots"):
+    """
+    Perform exploratory data analysis (EDA) and save basic visualizations.
+    """
+    os.makedirs(save_dir, exist_ok=True)
+
+    # --- Basic statistics ---
+    print("=== Dataset Overview ===")
+    print(f"Total transactions: {len(merged_df):,}")
+    print("Class distribution:")
+    print(merged_df['class'].value_counts())
+
+    # --- Missing values ---
+    missing = merged_df.isna().sum()
+    missing = missing[missing > 0]
+    if not missing.empty:
+        print("\nColumns with missing values:\n", missing)
+    else:
+        print("\nNo missing values found ✅")
+
+    # --- Class distribution plot ---
+    class_counts = merged_df['class'].value_counts().sort_index()
+    plt.figure(figsize=(6, 4))
+    sns.barplot(x=class_counts.index, y=class_counts.values, palette="Set2")
+    plt.title("Class Distribution (1=Illicit, 2=Licit, 3=Unknown)")
+    plt.xlabel("Class")
+    plt.ylabel("Count")
+    plt.tight_layout()
+    plt.savefig(f"{save_dir}/class_distribution.png", dpi=300)
+    plt.close()
+
+    # --- Feature histograms ---
+    feature_cols = [c for c in merged_df.columns if c.startswith("feature_")]
+    merged_df[feature_cols[:10]].hist(figsize=(12, 8))
+    plt.tight_layout()
+    plt.savefig(f"{save_dir}/feature_histograms.png", dpi=300)
+    plt.close()
+
+    # --- Correlation heatmap ---
+    corr = merged_df[feature_cols[:30]].corr()
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(corr, cmap="coolwarm", center=0)
+    plt.title("Feature Correlation (First 30 Features)")
+    plt.tight_layout()
+    plt.savefig(f"{save_dir}/correlation_heatmap.png", dpi=300)
+    plt.close()
+
+    # --- Time-step analysis ---
+    if "time_step" in merged_df.columns or "Time step" in merged_df.columns:
+        t_col = "time_step" if "time_step" in merged_df.columns else "Time step"
+        counts = merged_df.groupby([t_col, "class"]).size().unstack(fill_value=0)
+        counts.plot(kind="bar", stacked=True, figsize=(12, 6), colormap="viridis")
+        plt.title("Transaction Classes over Time Steps")
+        plt.xlabel("Time Step")
+        plt.ylabel("Count")
+        plt.tight_layout()
+        plt.savefig(f"{save_dir}/time_distribution.png", dpi=300)
+        plt.close()
+
+    print(f"\nEDA visualizations saved to: {save_dir}")
