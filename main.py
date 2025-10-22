@@ -1,7 +1,7 @@
 import os
 from src.data_loader import load_and_explore_data
 from src.models.classical import train_random_forest, train_svm
-from src.models.graph_models import train_node2vec_rf, train_graphsage
+from src.models.graph import train_node2vec_rf, train_graphsage
 from src.visualization.eda import run_eda
 from src.visualization.evaluation import plot_model_comparison, plot_bar_comparison
 from src.models.feature_importance import (
