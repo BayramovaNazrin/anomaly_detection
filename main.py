@@ -8,6 +8,11 @@ from src.models.feature_importance import (
     permutation_importance, plot_feature_importances,
     create_top_feature_graph, retrain_with_top_features
 )
+from src.visualization.feature_importance_plots import (
+    plot_rf_feature_importance,
+    plot_graphsage_importance,
+    plot_feature_comparison
+)
 
 
 def setup_directories():
@@ -66,6 +71,15 @@ def main():
 
     plot_model_comparison(df_results)
     plot_bar_comparison(df_results)
+
+    # importance DataFrames
+    rf_imp_df = pd.read_csv("artifacts/data/rf_feature_importance.csv")
+    gs_imp_df = pd.read_csv("artifacts/data/graphsage_feature_importance.csv")  
+    
+    # === Visualization ===
+    plot_rf_feature_importance(rf_imp_df)
+    plot_graphsage_importance(gs_imp_df)
+    plot_feature_comparison(rf_imp_df, gs_imp_df)
 
 
 if __name__ == "__main__":
