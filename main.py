@@ -4,6 +4,11 @@ from src.models.classical import train_random_forest, train_svm
 from src.models.graph_models import train_node2vec_rf, train_graphsage
 from src.visualization.eda import run_eda
 from src.visualization.evaluation import plot_model_comparison, plot_bar_comparison
+from src.models.feature_importance import (
+    permutation_importance, plot_feature_importances,
+    create_top_feature_graph, retrain_with_top_features
+)
+
 
 def setup_directories():
     """folders for outputs and plots"""
@@ -40,6 +45,15 @@ def main():
     # --- Graph models ---
     train_node2vec_rf(features_path, edges_path, classes_path)
     train_graphsage(features_path, edges_path, classes_path)
+
+    importances = permutation_importance(model, graph_data, test, metric='f1_score', device=device)
+    feature_cols = features_df.columns.drop(['txId', 'Time step'])
+    imp_df = plot_feature_importances(importances, feature_cols)
+
+    top_k = 50
+    top_features = imp_df.head(top_k)['Feature'].tolist()
+    graph_data_top = create_top_feature_graph(graph_data, features_df, top_features, device)
+    model_top, metrics_top = retrain_with_top_features(graph_data_top, device=device)
 
     # summarize and visualize model comparison results
     results = [
