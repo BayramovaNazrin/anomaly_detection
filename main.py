@@ -1,6 +1,7 @@
 from src.data_loader import load_and_explore_data
 from src.models.classical import train_random_forest, train_svm
 from src.models.graph_models import train_node2vec_rf, train_graphsage
+from src.visualization.eda import run_eda
 
 def main():
     # --- Paths ---
@@ -14,6 +15,10 @@ def main():
         edges_path=edges_path,
         classes_path=classes_path
     )
+    
+    # --- EDA/visualization ---
+    run_eda(merged_df)
+    train_random_forest(merged_df)
 
     # --- Classical models ---
     train_random_forest(merged_df)
