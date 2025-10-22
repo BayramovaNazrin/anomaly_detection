@@ -13,6 +13,12 @@ from src.visualization.feature_importance_plots import (
     plot_graphsage_importance,
     plot_feature_comparison
 )
+from src.utils.helpers import setup_directories, set_seed
+
+
+def main():
+    setup_directories()   # makes sure artifacts/ folders exist
+    set_seed(42)          # fixes random seed for reproducibility
 
 
 def setup_directories():
