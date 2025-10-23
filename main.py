@@ -1,6 +1,7 @@
 import os
 import argparse
 import pandas as pd
+
 from src.data_loader import load_and_explore_data
 from src.models.classical import train_random_forest, train_svm
 from src.models.graph import train_node2vec_rf, train_graphsage
@@ -18,7 +19,9 @@ from src.visualization.feature_importance_plots import (
 from src.utils.helpers import setup_directories, set_seed, get_data_path
 from src.utils.helpers import safe_report, evaluate_with_threshold
 
+
 def main():
+    # --- Command-line argument for data directory ---
     parser = argparse.ArgumentParser(description="Anomaly Detection for Illicit Bitcoin Transactions")
     parser.add_argument(
         "--data_dir",
@@ -28,47 +31,21 @@ def main():
     )
     args = parser.parse_args()
 
-# --- Resolve data paths ---
+    # --- Setup ---
+    setup_directories()
+    set_seed(42)
+
+    # --- Resolve data paths ---
     if args.data_dir:
-        # Use user-provided folder path
         features_path = os.path.join(args.data_dir, "elliptic_txs_features.csv")
         edges_path    = os.path.join(args.data_dir, "elliptic_txs_edgelist.csv")
         classes_path  = os.path.join(args.data_dir, "elliptic_txs_classes.csv")
     else:
-        # Use project-relative data folder
         features_path = get_data_path("elliptic_txs_features.csv")
         edges_path    = get_data_path("elliptic_txs_edgelist.csv")
         classes_path  = get_data_path("elliptic_txs_classes.csv")
 
     print(f"📂 Using data from:\n{os.path.dirname(features_path)}")
-    # --- Load Data ---
-    features, edges, classes, merged_df = load_and_explore_data(
-        features_path=features_path,
-        edges_path=edges_path,
-        classes_path=classes_path
-    )
-
-
-    setup_directories()   # makes sure artifacts/ folders exist
-    set_seed(42)          # fixes random seed for reproducibility
-
-
-def setup_directories():
-    """folders for outputs and plots"""
-    os.makedirs("artifacts/plots", exist_ok=True)
-    os.makedirs("artifacts/models", exist_ok=True)
-    os.makedirs("artifacts/data", exist_ok=True)
-    print("Required directories are ready.")
-
-
-def main():
-    
-    setup_directories()
-
-    # --- Paths ---
-    features_path = "/content/drive/MyDrive/anomaly/elliptic_txs_features.csv"
-    edges_path = "/content/drive/MyDrive/anomaly/elliptic_txs_edgelist.csv"
-    classes_path = "/content/drive/MyDrive/anomaly/elliptic_txs_classes.csv"
 
     # --- Load Data ---
     features, edges, classes, merged_df = load_and_explore_data(
@@ -76,29 +53,17 @@ def main():
         edges_path=edges_path,
         classes_path=classes_path
     )
-    
-    # --- EDA/visualization ---
+
+    # --- EDA & Classical Models ---
     run_eda(merged_df)
-    train_random_forest(merged_df)
-
-    # --- Classical models ---
     train_random_forest(merged_df)
     train_svm(merged_df)
 
-    # --- Graph models ---
+    # --- Graph Models ---
     train_node2vec_rf(features_path, edges_path, classes_path)
     train_graphsage(features_path, edges_path, classes_path)
 
-    importances = permutation_importance(model, graph_data, test, metric='f1_score', device=device)
-    feature_cols = features_df.columns.drop(['txId', 'Time step'])
-    imp_df = plot_feature_importances(importances, feature_cols)
-
-    top_k = 50
-    top_features = imp_df.head(top_k)['Feature'].tolist()
-    graph_data_top = create_top_feature_graph(graph_data, features_df, top_features, device)
-    model_top, metrics_top = retrain_with_top_features(graph_data_top, device=device)
-
-    # summarize and visualize model comparison results
+    # === Model Comparison (example values) ===
     results = [
         {"Model": "RandomForest", "Accuracy": 0.988, "Precision (Illicit)": 0.95, "Recall (Illicit)": 0.92, "F1 (Illicit)": 0.94},
         {"Model": "SVM",          "Accuracy": 0.983, "Precision (Illicit)": 0.93, "Recall (Illicit)": 0.89, "F1 (Illicit)": 0.91},
@@ -110,18 +75,18 @@ def main():
     plot_model_comparison(df_results)
     plot_bar_comparison(df_results)
 
-    # importance DataFrames
-    rf_imp_df = pd.read_csv("artifacts/data/rf_feature_importance.csv")
-    gs_imp_df = pd.read_csv("artifacts/data/graphsage_feature_importance.csv")  
-    
-    # === Visualization ===
-    plot_rf_feature_importance(rf_imp_df)
-    plot_graphsage_importance(gs_imp_df)
-    plot_feature_comparison(rf_imp_df, gs_imp_df)
+    # === Feature Importance Visualization (optional, only if data exists) ===
+    try:
+        rf_imp_df = pd.read_csv("artifacts/data/rf_feature_importance.csv")
+        gs_imp_df = pd.read_csv("artifacts/data/graphsage_feature_importance.csv")
 
-    # Safe Reporting:
-    metrics = safe_report(y_true, y_pred)
-    evaluate_with_threshold(y_true, y_prob)
+        plot_rf_feature_importance(rf_imp_df)
+        plot_graphsage_importance(gs_imp_df)
+        plot_feature_comparison(rf_imp_df, gs_imp_df)
+    except FileNotFoundError:
+        print("⚠️ Skipping feature importance plots (files not found).")
+
+    print("✅ Pipeline completed successfully.")
 
 
 if __name__ == "__main__":
