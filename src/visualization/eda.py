@@ -59,18 +59,22 @@ def run_eda(merged_df, save_dir="artifacts/plots"):
         plt.close()
 
     # --- Correlation heatmap ---
-    feature_cols = [c for c in merged_df.columns if c.startswith("feature_")]
+    feature_cols = [c for c in merged_df.columns if c.startswith(("Local_feature_", "Aggregate_feature_"))]
+    if len(feature_cols) == 0:
+        feature_cols = merged_df.select_dtypes(include=["number"]).columns.tolist()
+
     if len(feature_cols) > 0:
         subset = feature_cols[:min(30, len(feature_cols))]
         corr = merged_df[subset].corr()
         plt.figure(figsize=(10, 8))
         sns.heatmap(corr, cmap="coolwarm", center=0)
-        plt.title("Feature Correlation (First 30 Features)")
+        plt.title("Feature Correlation (First 30 Numeric Features)")
         plt.tight_layout()
         plt.savefig(f"{save_dir}/correlation_heatmap.png", dpi=300)
         plt.close()
     else:
-        print("⚠️ No 'feature_' columns found for correlation heatmap.")
+        print("⚠️ No numeric columns found for correlation heatmap.")
+
 
     # --- Time-step analysis ---
     if "time_step" in merged_df.columns or "Time step" in merged_df.columns:
