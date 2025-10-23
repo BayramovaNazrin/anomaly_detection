@@ -38,17 +38,25 @@ def run_eda(merged_df, save_dir="artifacts/plots"):
     plt.close()
 
     # --- Feature histograms ---
+      
     feature_cols = [c for c in merged_df.columns if c.startswith("feature_")]
-    numeric_cols = merged_df.select_dtypes(include=["number"]).columns
 
-    numeric_cols = merged_df.select_dtypes(include=['number']).columns
-    merged_df[numeric_cols[:10]].hist(figsize=(12, 8))
-    plt.tight_layout()
-    plt.show()
+    # ✅ Select only numeric columns
+    numeric_cols = merged_df.select_dtypes(include=["number"]).columns.tolist()
+    print(f"\n📊 Found {len(numeric_cols)} numeric columns out of {merged_df.shape[1]} total.")
 
-    plt.tight_layout()
-    plt.savefig(f"{save_dir}/feature_histograms.png", dpi=300)
-    plt.close()
+    # ✅ If no numeric columns found, skip plotting
+    if len(numeric_cols) == 0:
+        print("⚠️ No numeric columns found to plot histograms.")
+    else:
+        plt.figure(figsize=(12, 8))
+        merged_df[numeric_cols[:10]].hist(figsize=(12, 8))
+        plt.suptitle("Distribution of First 10 Numeric Features", fontsize=14)
+        plt.tight_layout()
+        plt.savefig(f"{save_dir}/feature_histograms.png", dpi=300)
+        plt.show()
+        plt.close()
+
 
     # --- Correlation heatmap ---
     corr = merged_df[feature_cols[:30]].corr()
