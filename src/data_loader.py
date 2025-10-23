@@ -4,15 +4,17 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
-def load_and_explore_data(
-    features_path="data/elliptic_txs_features.csv",
-    edges_path="data/elliptic_txs_edgelist.csv",
-    classes_path="data/elliptic_txs_classes.csv"
-):
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-    features_path = os.path.join(base_dir, features_path)
-    edges_path = os.path.join(base_dir, edges_path)
-    classes_path = os.path.join(base_dir, classes_path)
+def load_and_explore_data():
+    # Automatically resolve dataset paths
+    features_path = get_data_path("elliptic_txs_features.csv")
+    edges_path = get_data_path("elliptic_txs_edgelist.csv")
+    classes_path = get_data_path("elliptic_txs_classes.csv")
+
+    # Load datasets
+    features = pd.read_csv(features_path)
+    edges = pd.read_csv(edges_path)
+    classes = pd.read_csv(classes_path)
+
 
     """
     Loads and inspects the Elliptic dataset.
