@@ -4,34 +4,14 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
-def load_and_explore_data():
-    # Automatically resolve dataset paths
-    features_path = get_data_path("elliptic_txs_features.csv")
-    edges_path = get_data_path("elliptic_txs_edgelist.csv")
-    classes_path = get_data_path("elliptic_txs_classes.csv")
-
-    # Load datasets
-    features = pd.read_csv(features_path)
-    edges = pd.read_csv(edges_path)
-    classes = pd.read_csv(classes_path)
-
-
-    """
-    Loads and inspects the Elliptic dataset.
-    Handles missing values, class mapping, and basic EDA summaries.
-    """
-
-    print("Loading data...")
+def load_and_explore_data(features_path, edges_path, classes_path):
 
     # --- Load CSV files ---
-    features = pd.read_csv(features_path, header=None)
+    features = pd.read_csv(features_path)
     edges = pd.read_csv(edges_path)
     classes = pd.read_csv(classes_path, header=None)
 
-    # --- Prepare feature columns ---
-    num_cols = features.shape[1]
-    feature_cols = ['txId', 'Time step'] + [f'feature_{i}' for i in range(1, num_cols - 1)]
-    features.columns = feature_cols
+    # --- Set proper column names for classes ---
     classes.columns = ['txId', 'class']
 
     # --- Normalize and clean 'class' column ---
