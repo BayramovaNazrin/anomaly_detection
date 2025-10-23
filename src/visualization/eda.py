@@ -39,6 +39,8 @@ def run_eda(merged_df, save_dir="artifacts/plots"):
 
     # --- Feature histograms ---
     feature_cols = [c for c in merged_df.columns if c.startswith("feature_")]
+    numeric_cols = merged_df.select_dtypes(include=["number"]).columns
+
     merged_df[feature_cols[:10]].hist(figsize=(12, 8))
     plt.tight_layout()
     plt.savefig(f"{save_dir}/feature_histograms.png", dpi=300)
