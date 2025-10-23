@@ -13,7 +13,7 @@ from sklearn.utils.multiclass import unique_labels
 
 
 # ==========================================================
-# 1️⃣ Directory setup
+#  Directory setup
 # ==========================================================
 def setup_directories():
     """
@@ -25,7 +25,7 @@ def setup_directories():
 
 
 # ==========================================================
-# 2️⃣ Safe report generator
+#  Safe report generator
 # ==========================================================
 def safe_report(y_true, y_pred):
     """
@@ -55,7 +55,7 @@ def safe_report(y_true, y_pred):
 
 
 # ==========================================================
-# 3️⃣ Threshold-based evaluator (optional for GNNs)
+# Threshold-based evaluator (optional for GNNs)
 # ==========================================================
 def evaluate_with_threshold(y_true, y_prob, threshold=0.5):
     """
@@ -79,7 +79,7 @@ def evaluate_with_threshold(y_true, y_prob, threshold=0.5):
 
 
 # ==========================================================
-# 4️⃣ Reproducibility helper
+#  Reproducibility helper
 # ==========================================================
 def set_seed(seed=42):
     """
@@ -95,3 +95,14 @@ def set_seed(seed=42):
         torch.cuda.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
     print(f"✅ Random seed set to {seed}")
+
+# ==========================================================
+#  Data path resolver
+# ==========================================================
+def get_data_path(filename):
+    """
+    Return the absolute path to a file inside the project's 'data' folder,
+    regardless of where the script is executed from.
+    """
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'data'))
+    return os.path.join(base_dir, filename)
