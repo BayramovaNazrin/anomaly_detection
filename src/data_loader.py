@@ -9,6 +9,11 @@ def load_and_explore_data(
     edges_path="data/elliptic_txs_edgelist.csv",
     classes_path="data/elliptic_txs_classes.csv"
 ):
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    features_path = os.path.join(base_dir, features_path)
+    edges_path = os.path.join(base_dir, edges_path)
+    classes_path = os.path.join(base_dir, classes_path)
+
     """
     Loads and inspects the Elliptic dataset.
     Handles missing values, class mapping, and basic EDA summaries.
