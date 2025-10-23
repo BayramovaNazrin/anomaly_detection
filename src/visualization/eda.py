@@ -29,7 +29,7 @@ def run_eda(merged_df, save_dir="artifacts/plots"):
     # --- Class distribution plot ---
     class_counts = merged_df['class'].value_counts().sort_index()
     plt.figure(figsize=(6, 4))
-    sns.barplot(x=class_counts.index, y=class_counts.values, palette="Set2")
+    sns.barplot(x=class_counts.index, y=class_counts.values, hue=class_counts.index, palette="Set2", legend=False)
     plt.title("Class Distribution (1=Illicit, 2=Licit, 3=Unknown)")
     plt.xlabel("Class")
     plt.ylabel("Count")
@@ -41,7 +41,11 @@ def run_eda(merged_df, save_dir="artifacts/plots"):
     feature_cols = [c for c in merged_df.columns if c.startswith("feature_")]
     numeric_cols = merged_df.select_dtypes(include=["number"]).columns
 
-    merged_df[feature_cols[:10]].hist(figsize=(12, 8))
+    numeric_cols = merged_df.select_dtypes(include=['number']).columns
+    merged_df[numeric_cols[:10]].hist(figsize=(12, 8))
+    plt.tight_layout()
+    plt.show()
+
     plt.tight_layout()
     plt.savefig(f"{save_dir}/feature_histograms.png", dpi=300)
     plt.close()
