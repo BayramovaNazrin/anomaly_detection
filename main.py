@@ -37,11 +37,11 @@ def main():
 
     # --- Resolve data paths ---
     if args.data_dir:
-        features_path = os.path.join(args.data_dir, "elliptic_txs_features.csv")
+        features_path = os.path.join(args.data_dir, "txs_features.csv")
         edges_path    = os.path.join(args.data_dir, "elliptic_txs_edgelist.csv")
         classes_path  = os.path.join(args.data_dir, "elliptic_txs_classes.csv")
     else:
-        features_path = get_data_path("elliptic_txs_features.csv")
+        features_path = get_data_path("txs_features.csv")
         edges_path    = get_data_path("elliptic_txs_edgelist.csv")
         classes_path  = get_data_path("elliptic_txs_classes.csv")
 
