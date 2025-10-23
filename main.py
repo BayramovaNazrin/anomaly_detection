@@ -1,4 +1,6 @@
 import os
+import argparse
+import pandas as pd
 from src.data_loader import load_and_explore_data
 from src.models.classical import train_random_forest, train_svm
 from src.models.graph import train_node2vec_rf, train_graphsage
@@ -13,10 +15,40 @@ from src.visualization.feature_importance_plots import (
     plot_graphsage_importance,
     plot_feature_comparison
 )
-from src.utils.helpers import setup_directories, set_seed
+from src.utils.helpers import setup_directories, set_seed, get_data_path
 from src.utils.helpers import safe_report, evaluate_with_threshold
 
 def main():
+    parser = argparse.ArgumentParser(description="Anomaly Detection for Illicit Bitcoin Transactions")
+    parser.add_argument(
+        "--data_dir",
+        type=str,
+        default=None,
+        help="Optional path to the folder containing the Elliptic dataset."
+    )
+    args = parser.parse_args()
+
+# --- Resolve data paths ---
+    if args.data_dir:
+        # Use user-provided folder path
+        features_path = os.path.join(args.data_dir, "elliptic_txs_features.csv")
+        edges_path    = os.path.join(args.data_dir, "elliptic_txs_edgelist.csv")
+        classes_path  = os.path.join(args.data_dir, "elliptic_txs_classes.csv")
+    else:
+        # Use project-relative data folder
+        features_path = get_data_path("elliptic_txs_features.csv")
+        edges_path    = get_data_path("elliptic_txs_edgelist.csv")
+        classes_path  = get_data_path("elliptic_txs_classes.csv")
+
+    print(f"📂 Using data from:\n{os.path.dirname(features_path)}")
+    # --- Load Data ---
+    features, edges, classes, merged_df = load_and_explore_data(
+        features_path=features_path,
+        edges_path=edges_path,
+        classes_path=classes_path
+    )
+
+
     setup_directories()   # makes sure artifacts/ folders exist
     set_seed(42)          # fixes random seed for reproducibility
 
