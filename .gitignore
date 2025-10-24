@@ -1,6 +1,6 @@
 # Ignore dataset files
-data/
-*.csv
+
+
 *.zip
 *.gz
 
