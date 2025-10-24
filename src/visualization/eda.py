@@ -40,7 +40,7 @@ def run_eda(merged_df, save_dir="artifacts/plots"):
     plt.xlabel("Class")
     plt.ylabel("Count")
     plt.tight_layout()
-    plt.savefig(f"{save_dir}/class_distribution.png", dpi=300)
+    plt.savefig(os.path.join(save_dir, "class_distribution.png")
     plt.close()
 
     # --- Feature histograms ---
