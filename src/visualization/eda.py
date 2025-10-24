@@ -48,12 +48,12 @@ def run_eda(merged_df, save_dir="artifacts/plots"):
     print(f"\n📊 Found {len(numeric_cols)} numeric columns out of {merged_df.shape[1]} total.")
 
     if len(numeric_cols) > 0:
-    merged_df[numeric_cols[:10]].hist(figsize=(12, 8))
-    plt.tight_layout()
-    plt.savefig(os.path.join(save_dir, "histograms.png"))
-    plt.close()
+        merged_df[numeric_cols[:10]].hist(figsize=(12, 8))
+        plt.tight_layout()
+        plt.savefig(os.path.join(save_dir, "histograms.png"))
+        plt.close()
     else:
-    print("⚠️ No numeric columns available for histogram plotting.")
+        print("⚠️ No numeric columns available for histogram plotting.")
 
 
     # --- Correlation heatmap ---
