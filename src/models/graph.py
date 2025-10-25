@@ -131,7 +131,8 @@ class GraphSAGEModel(torch.nn.Module):
 def build_graph_data(features_path, edges_path, classes_path):
     features_df = pd.read_csv(features_path)
     edges_df = pd.read_csv(edges_path)
-    classes_df = pd.read_csv(classes_path)
+    classes_df = pd.read_csv(classes_path, header=None, names=['txId', 'class'])
+
     classes_df['class'] = (
         classes_df['class']
         .astype(str)
