@@ -78,6 +78,11 @@ def train_random_forest(merged_df):
             random_state=42, class_weight='balanced',
             n_estimators=200, max_depth=10))
     ])
+    print("Training shape:", X_train.shape)
+    print("Dtypes:\n", X_train.dtypes.value_counts())
+    print("Non-numeric columns:\n", X_train.select_dtypes(exclude='number').columns.tolist()[:10])
+    print("Any NaN in X_train:", X_train.isna().sum().sum())
+
 
     pipeline.fit(X_train, y_train)
     y_pred = pipeline.predict(X_test)
