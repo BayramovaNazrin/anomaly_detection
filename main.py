@@ -50,9 +50,9 @@ def main():
     # --- Load Data ---
    
     features, edges, classes, merged_df = load_and_explore_data(
-    "data/txs_features.csv",
-    "data/txs_edgelist.csv",
-    "data/txs_classes.csv"
+    features_path,
+    edges_path,
+    classes_path
     )
 
     # --- EDA & Classical Models ---
