@@ -44,6 +44,14 @@ def train_node2vec_rf(features_path, edges_path, classes_path):
     ).t().contiguous()
 
     x = torch.tensor(features.iloc[:, 1:].values, dtype=torch.float)
+    x = torch.tensor(
+    features.drop(columns=["txId"], errors="ignore")
+            .select_dtypes(include=[float, int])
+            .fillna(0)
+            .values,
+    dtype=torch.float
+)
+
     y = torch.tensor(classes.set_index('txId').loc[node_ids, 'class'].values, dtype=torch.long)
 
     # --- Split ---
