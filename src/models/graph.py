@@ -144,6 +144,12 @@ def build_graph_data(features_path, edges_path, classes_path):
 
     df['class'] = df['class'].map({1: 1, 2: 0})
 
+    
+    print("Unique class values in combined:", combined['class'].unique())
+    print("Rows before filtering:", len(combined))
+    print("Rows after filtering [1,2]:", len(df))
+
+    
     scaler = StandardScaler()
     x = torch.tensor(scaler.fit_transform(df.drop(['txId', 'Time step', 'class'], axis=1)), dtype=torch.float)
     tx_map = {tx: i for i, tx in enumerate(df['txId'])}
