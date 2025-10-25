@@ -5,7 +5,6 @@ import seaborn as sns
 import numpy as np
 
 def load_and_explore_data(features_path, edges_path, classes_path):
-    print("DEBUG paths:", features_path, edges_path, classes_path)
 
 
     # --- Load CSV files ---
