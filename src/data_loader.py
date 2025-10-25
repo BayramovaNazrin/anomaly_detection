@@ -10,7 +10,7 @@ def load_and_explore_data(features_path, edges_path, classes_path):
     print("DEBUG received paths:")
     print("  features_path:", features_path)
     print("  edges_path:", edges_path)
-    print("  classes_path:", classes_path
+    print("  classes_path:", classes_path)
     # --- Load CSV files ---
     features = pd.read_csv(features_path)
     edges = pd.read_csv(edges_path)
