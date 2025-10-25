@@ -91,6 +91,11 @@ def train_random_forest(merged_df):
     print("Non-numeric columns:\n", X_train.select_dtypes(exclude='number').columns.tolist()[:10])
     print("Any NaN in X_train:", X_train.isna().sum().sum())
 
+    print("=== DEBUG RF TRAIN DATA ===")
+    print("X_train shape:", X_train.shape)
+    print("y_train shape:", y_train.shape)
+    print("X_train columns:", list(X_train.columns[:10]))
+    print("Sample values:\n", X_train.head(3))
 
     pipeline.fit(X_train, y_train)
     y_pred = pipeline.predict(X_test)
