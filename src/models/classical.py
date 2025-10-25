@@ -21,21 +21,26 @@ sns.set_theme(style='whitegrid')
 
 def prepare_data(merged_df):
     """
-    Filters known (labeled) transactions and prepares X, y.
+    Filters known (labeled) transactions and prepares clean numeric X, y.
     """
     df_known = merged_df[merged_df['class'] != 3].copy()
     df_unknown = merged_df[merged_df['class'] == 3].copy()
 
-    # --- Select and clean feature columns ---
-    feature_cols = [c for c in merged_df.columns
-                    if 'feature' in c.lower() and c not in ['txId', 'time step', 'class']]
+    # --- Select numeric feature columns only ---
+    drop_cols = ['txId', 'Time step', 'class']
+    feature_cols = [c for c in merged_df.columns if c not in drop_cols]
 
-    X = df_known[feature_cols].apply(pd.to_numeric, errors='coerce').fillna(0)
-    X = X.loc[:, X.var() != 0]  # drop constant columns
+    X = df_known[feature_cols].select_dtypes(include=[float, int]).fillna(0)
     y = df_known['class'].astype(int)
 
-    print("Prepared data shape:", X.shape)
-    print("Remaining NaNs:", X.isna().sum().sum())
+    print("=== PREPARE DATA CHECK ===")
+    print("All columns:", len(feature_cols))
+    print("Numeric columns kept:", X.shape[1])
+    print("Training samples:", X.shape[0])
+    print("NaN total:", X.isna().sum().sum())
+
+    if X.empty:
+        raise ValueError("X_train is empty — no numeric columns detected.")
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, stratify=y, random_state=42
@@ -43,10 +48,10 @@ def prepare_data(merged_df):
 
     X_unknown = None
     if not df_unknown.empty:
-        X_unknown = df_unknown[feature_cols].apply(pd.to_numeric, errors='coerce').fillna(0)
-        X_unknown = X_unknown.loc[:, X_unknown.var() != 0]
+        X_unknown = df_unknown[feature_cols].select_dtypes(include=[float, int]).fillna(0)
 
     return X_train, X_test, y_train, y_test, X_unknown
+
 
 
 def plot_confusion_matrix(y_test, y_pred, model_name):
