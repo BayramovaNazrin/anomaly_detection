@@ -43,13 +43,12 @@ def train_node2vec_rf(features_path, edges_path, classes_path):
         dtype=torch.long
     ).t().contiguous()
 
-    x = torch.tensor(features.iloc[:, 1:].values, dtype=torch.float)
     x = torch.tensor(
-    features.drop(columns=["txId"], errors="ignore")
-            .select_dtypes(include=[float, int])
+        features.drop(columns=[0], errors="ignore")  # drop txId column
+            .apply(pd.to_numeric, errors='coerce')  # convert all to numeric
             .fillna(0)
             .values,
-    dtype=torch.float
+        dtype=torch.float
 )
 
     y = torch.tensor(classes.set_index('txId').loc[node_ids, 'class'].values, dtype=torch.long)
