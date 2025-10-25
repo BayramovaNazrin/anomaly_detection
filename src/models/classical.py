@@ -22,21 +22,29 @@ sns.set_theme(style='whitegrid')
 def prepare_data(merged_df):
     """
     Filters known (labeled) transactions and prepares X, y.
-    Licit = 2, Illicit = 1, Unknown = 3
-    Returns X_train, X_test, y_train, y_test, X_unknown.
     """
     df_known = merged_df[merged_df['class'] != 3].copy()
     df_unknown = merged_df[merged_df['class'] == 3].copy()
 
-    feature_cols = [c for c in merged_df.columns if c.startswith('feature_')]
-    X = df_known[feature_cols]
+    # --- Select and clean feature columns ---
+    feature_cols = [c for c in merged_df.columns
+                    if 'feature' in c.lower() and c not in ['txId', 'time step', 'class']]
+
+    X = df_known[feature_cols].apply(pd.to_numeric, errors='coerce').fillna(0)
+    X = X.loc[:, X.var() != 0]  # drop constant columns
     y = df_known['class'].astype(int)
+
+    print("Prepared data shape:", X.shape)
+    print("Remaining NaNs:", X.isna().sum().sum())
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, stratify=y, random_state=42
     )
 
-    X_unknown = df_unknown[feature_cols] if not df_unknown.empty else None
+    X_unknown = None
+    if not df_unknown.empty:
+        X_unknown = df_unknown[feature_cols].apply(pd.to_numeric, errors='coerce').fillna(0)
+        X_unknown = X_unknown.loc[:, X_unknown.var() != 0]
 
     return X_train, X_test, y_train, y_test, X_unknown
 
