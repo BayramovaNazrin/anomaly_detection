@@ -48,10 +48,11 @@ def main():
     print(f"📂 Using data from:\n{os.path.dirname(features_path)}")
 
     # --- Load Data ---
+   
     features, edges, classes, merged_df = load_and_explore_data(
-        features_path=features_path,
-        edges_path=edges_path,
-        classes_path=classes_path
+    "data/txs_features.csv",
+    "data/txs_edgelist.csv",
+    "data/txs_classes.csv"
     )
 
     # --- EDA & Classical Models ---
