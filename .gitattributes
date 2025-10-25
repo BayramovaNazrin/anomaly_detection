@@ -1,1 +1,2 @@
 txs_features.txt filter=lfs diff=lfs merge=lfs -text
+txs_classes.txt filter=lfs diff=lfs merge=lfs -text
