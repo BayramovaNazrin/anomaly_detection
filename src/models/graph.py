@@ -132,10 +132,16 @@ def build_graph_data(features_path, edges_path, classes_path):
     features_df = pd.read_csv(features_path)
     edges_df = pd.read_csv(edges_path)
     classes_df = pd.read_csv(classes_path)
-    classes_df['class'] = classes_df['class'].map({'unknown': 3, '1': 1, '2': 2})
-
-    combined = pd.merge(features_df, classes_df, on='txId')
+    classes_df['class'] = (
+        classes_df['class']
+        .astype(str)
+        .str.strip()
+        .replace({'unknown': 3, '1': 1, '2': 2})
+        .astype(int)
+    )
+    combined = pd.merge(features_df, classes_df, on='txId', how='inner')
     df = combined[combined['class'].isin([1, 2])].copy()
+
     df['class'] = df['class'].map({1: 1, 2: 0})
 
     scaler = StandardScaler()
