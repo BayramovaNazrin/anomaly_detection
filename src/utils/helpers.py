@@ -99,10 +99,9 @@ def set_seed(seed=42):
 # ==========================================================
 #  Data path resolver
 # ==========================================================
-def get_data_path(filename):
+def get_data_path(filename: str) -> str:
     """
-    Return the absolute path to a file inside the project's 'data' folder,
-    regardless of where the script is executed from.
+    Return the full path to a data file inside the project data directory.
     """
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'data'))
-    return os.path.join(base_dir, filename)
+    return os.path.join("data", filename)
+
