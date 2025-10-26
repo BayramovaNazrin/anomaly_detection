@@ -4,7 +4,7 @@ import pandas as pd
 
 from src.data_loader import load_and_explore_data
 from src.models.classical import train_random_forest, train_svm
-from src.models.graph import (
+from src.models.graph_model import (
     train_node2vec_rf, 
     train_graphsage,
     evaluate_graphsage_test  # Import the evaluation function
