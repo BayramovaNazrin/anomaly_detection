@@ -27,8 +27,10 @@ def train_node2vec_rf(features, edges, classes):
     """
     # --- Use pre-loaded data ---
     # Filter classes to only include 1 (illicit) and 2 (licit)
-    classes = classes[classes['class'].isin([1, 2])].copy()
-    classes['class'] = classes['class'].astype(int)
+    # Convert to string and filter known classes
+    classes = classes[classes['class'].astype(str).isin(['1', '2'])].copy()
+    classes['class'] = classes['class'].astype(int)  #  convert to int
+    
 
     # --- Align nodes ---
     valid_nodes = classes['txId'].values
