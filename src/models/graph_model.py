@@ -32,8 +32,8 @@ def train_node2vec_rf(features, edges, classes):
 
     # --- Align nodes ---
     valid_nodes = classes['txId'].values
-    features = features[features[0].isin(valid_nodes)]
-    node_ids = features[0].values
+    features = features[features["txId"].isin(valid_nodes)]
+    node_ids = features["txId"].values
     
     # Check if features[0] (txId) is the index or a column.
     # The original code implies it's a column.
@@ -56,7 +56,7 @@ def train_node2vec_rf(features, edges, classes):
 
     # --- Prepare features (X) and labels (y) ---
     # Drop the txId column (column 0)
-    x_features = features.drop(columns=[0], errors="ignore") \
+    x_features = features.drop(columns=["txId", "Time step"], errors="ignore") \
                          .apply(pd.to_numeric, errors='coerce') \
                          .fillna(0)
                          
