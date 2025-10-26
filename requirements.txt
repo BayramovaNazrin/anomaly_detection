@@ -1,3 +1,17 @@
+torch==2.3.1
+torchvision==0.18.1
+torchaudio==2.3.1
+torch-geometric==2.6.1
+torch-scatter==2.1.2
+torch-sparse==0.6.18
+torch-cluster==1.6.3
+torch-spline-conv==1.2.2
+# Add your other deps below (e.g., pandas, scikit-learn, etc.)
+pandas
+scikit-learn
+matplotlib
+networkx
+
 
 # Core scientific stack
 numpy==2.0.2
@@ -9,13 +23,6 @@ scipy==1.16.2
 matplotlib==3.10.0
 seaborn==0.13.2
 
-# Deep learning
-torch==2.4.1
-torch-geometric==2.6.1
-torch-scatter==2.1.2
-torch-sparse==0.6.18
-torch-cluster==1.6.3
-torch-spline-conv==1.2.2
 
 # Utility
 tqdm==4.67.1
