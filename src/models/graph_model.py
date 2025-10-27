@@ -173,106 +173,89 @@ class GraphSAGEModel(torch.nn.Module):
         x = F.dropout(x, p=0.5, training=self.training)
         return self.conv2(x, edge_index)
 
-
+# ========================
+# Build Graph Data
+# ========================
 def build_graph_data(features_df, edges_df, classes_df):
-    """ Builds torch_geometric Data object from pre-loaded dataframes."""
-    
-    # --- Clean and merge ---
-    # Note: Using copies to avoid SettingWithCopyWarning
     features_df = features_df.copy()
     classes_df = classes_df.copy()
 
+    # Clean and map classes
     classes_df['class'] = (
-        classes_df['class']
-        .astype(str)
-        .str.strip()
-        .replace({'unknown': 3, '1': 1, '2': 2}) # Use numeric labels
+        classes_df['class'].astype(str).str.strip()
+        .replace({'unknown': 3, '1': 1, '2': 2})
     )
     classes_df['class'] = pd.to_numeric(classes_df['class'], errors='coerce')
-    
-    # Ensure txId is string for merging
+
+    # Ensure txId strings
     features_df['txId'] = features_df['txId'].astype(str)
     classes_df['txId'] = classes_df['txId'].astype(str)
 
     combined = pd.merge(features_df, classes_df, on='txId', how='inner')
-    
-    # Filter for known classes (1 and 2)
     df = combined[combined['class'].isin([1, 2])].copy()
 
-    # --- Remap labels for GraphSAGE: 1 (illicit) -> 1, 2 (licit) -> 0 ---
+    # Remap: illicit=1, licit=0
     df['class'] = df['class'].map({1: 1, 2: 0})
-    
+
     print(f"GraphSAGE using {len(df)} labeled nodes (Illicit: 1, Licit: 0).")
 
-    # --- Prepare features (X) ---
-    # Get feature columns (all columns except txId, Time step, and class)
+    # Features
     feature_cols = [c for c in df.columns if c not in ['txId', 'Time step', 'class']]
     scaler = StandardScaler()
-    x = torch.tensor(scaler.fit_transform(df[feature_cols]), dtype=torch.float)
+    x_numpy = scaler.fit_transform(df[feature_cols])
+    x_numpy = np.nan_to_num(x_numpy, nan=0.0, posinf=0.0, neginf=0.0)  # FIX: NaN/Inf
+    x = torch.tensor(x_numpy, dtype=torch.float)
 
-    # --- Create node mapping ---
+    # Node mapping
     tx_map = {tx: i for i, tx in enumerate(df['txId'])}
-    
-    # Ensure edges txId types match the map keys
     edges_df['txId1'] = edges_df['txId1'].astype(str)
     edges_df['txId2'] = edges_df['txId2'].astype(str)
 
-    valid_edges = edges_df[
-        edges_df['txId1'].isin(tx_map) & edges_df['txId2'].isin(tx_map)
-    ].copy()
-    
-    # Map edges to new integer indices
+    valid_edges = edges_df[edges_df['txId1'].isin(tx_map) & edges_df['txId2'].isin(tx_map)].copy()
     valid_edges['txId1'] = valid_edges['txId1'].map(tx_map)
     valid_edges['txId2'] = valid_edges['txId2'].map(tx_map)
     edge_index = torch.tensor(valid_edges[['txId1', 'txId2']].values.T, dtype=torch.long)
 
-    # --- Prepare labels (y) and masks ---
     y = torch.tensor(df['class'].values, dtype=torch.long)
     time_steps = torch.tensor(df['Time step'].values)
-    
-    # Using original paper's split: T <= 34 for train, T > 34 for test
     train_mask = time_steps <= 34
     test_mask = time_steps > 34
 
     print(f"Train samples: {train_mask.sum()}, Test samples: {test_mask.sum()}")
 
     data = Data(x=x, edge_index=edge_index, y=y, train_mask=train_mask, test_mask=test_mask)
-    
-    # Store feature names for importance plotting later
-    data.feature_names = feature_cols 
-    
+    data.feature_names = feature_cols
     return data
 
-# --- Top-level functions for training and evaluation ---
-# (Moved from inside train_graphsage to be importable)
-
+# ========================
+# Training / Evaluation
+# ========================
 def train_graphsage_epoch(model, data, optimizer, criterion):
-    """Performs a single training epoch for GraphSAGE."""
     model.train()
     optimizer.zero_grad()
     out = model(data.x, data.edge_index)
     loss = criterion(out[data.train_mask], data.y[data.train_mask])
     loss.backward()
+    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)  # FIX: prevent exploding gradients
     optimizer.step()
     return loss.item()
 
-
 @torch.no_grad()
 def evaluate_graphsage_test(model, data):
-    """Evaluates the GraphSAGE model on the test set."""
     model.eval()
     out = model(data.x, data.edge_index)
-    
-    # Get probabilities for class 1 (illicit)
-    probs = F.softmax(out, dim=1)[:, 1] 
-    preds = probs > 0.5 # Using 0.5 threshold
-    
+    out = torch.clamp(out, min=-1e6, max=1e6)  # FIX: avoid softmax overflow
+
+    probs = F.softmax(out, dim=1)[:, 1]
+    probs = torch.nan_to_num(probs, nan=0.5, posinf=1.0, neginf=0.0)  # FIX: NaNs/Infs
+    preds = probs > 0.5
+
     test_labels = data.y[data.test_mask].cpu().numpy()
     test_preds = preds[data.test_mask].cpu().numpy()
     test_probs = probs[data.test_mask].cpu().numpy()
-    
-    if len(test_labels) == 0 or len(test_preds) == 0:
-        print("Warning: No test samples found. Returning zero metrics.")
+
+    if len(test_labels) == 0:
+        print("Warning: No test samples. Returning zero metrics.")
         return {
             "Accuracy": 0, "F1 (Illicit)": 0, "Precision (Illicit)": 0,
             "Recall (Illicit)": 0, "ROC-AUC": 0, "PR-AUC": 0
@@ -287,30 +270,20 @@ def evaluate_graphsage_test(model, data):
         "PR-AUC": average_precision_score(test_labels, test_probs),
     }
 
-
+# ========================
+# Top-level Training
+# ========================
 def train_graphsage(features, edges, classes, epochs=200):
-    """
-    Trains and evaluates a GraphSAGE model using pre-loaded dataframes.
-    
-    Returns:
-    - model: The trained torch model.
-    - data: The torch_geometric Data object.
-    - metrics: A dictionary of final performance metrics.
-    """
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    
-    # --- Build graph data ---
-    # We pass the original dataframes to the builder
     data = build_graph_data(features, edges, classes).to(device)
-    
+
     if data.num_node_features == 0:
         raise ValueError("Graph data has 0 node features. Check feature columns.")
-        
-    model = GraphSAGEModel(data.num_node_features, 128, 2).to(device) # 2 classes: 0 (licit), 1 (illicit)
+
+    model = GraphSAGEModel(data.num_node_features, 128, 2).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
-    
-    # Adjust loss for class imbalance if needed
-    # Class 0 (licit) is majority, Class 1 (illicit) is minority
+
+    # Class weights
     class_counts = data.y[data.train_mask].bincount()
     if len(class_counts) == 2:
         weight = class_counts[0].item() / class_counts[1].item()
@@ -319,7 +292,6 @@ def train_graphsage(features, edges, classes, epochs=200):
     else:
         print("Warning: Could not calculate class weights. Using standard CrossEntropyLoss.")
         criterion = torch.nn.CrossEntropyLoss()
-
 
     print("Training GraphSAGE...")
     for epoch in range(1, epochs + 1):
@@ -332,5 +304,5 @@ def train_graphsage(features, edges, classes, epochs=200):
     final_metrics = evaluate_graphsage_test(model, data)
     for k, v in final_metrics.items():
         print(f"  {k}: {v:.4f}")
-        
+
     return model, data, final_metrics
