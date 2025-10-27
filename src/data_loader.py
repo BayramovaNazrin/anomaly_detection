@@ -112,9 +112,9 @@ def ensure_dataset_available():
     os.makedirs(LOCAL_DATA_DIR, exist_ok=True)
 
     expected_files = [
-        "elliptic_txs_features.csv",
-        "elliptic_txs_edgelist.csv",
-        "elliptic_txs_classes.csv",
+        "txs_features.csv",
+        "txs_edgelist.csv",
+        "txs_classes.csv",
     ]
     missing = [f for f in expected_files if not os.path.exists(os.path.join(LOCAL_DATA_DIR, f))]
 
