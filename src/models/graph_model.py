@@ -31,6 +31,7 @@ import pandas as pd
 import numpy as np
 
 
+
 def train_node2vec_rf(features, edges, classes):
     """
     Train Node2Vec embeddings + RandomForest classifier using pre-loaded dataframes.
@@ -38,7 +39,7 @@ def train_node2vec_rf(features, edges, classes):
     """
 
     # --- Filter classes to only include 1 (illicit) and 2 (licit)
-    classes = classes[classes['class'].astype(str).isin(['1', '2'])].copy()
+    classes = classes[classes['class'].astype(str).isin(['1','2'])].copy()
     classes['class'] = classes['class'].astype(int)
 
     # --- Align nodes
@@ -62,20 +63,10 @@ def train_node2vec_rf(features, edges, classes):
         dtype=torch.long
     ).t().contiguous()
 
-    # Keep txId for alignment
-    tx_ids = features['txId'].astype(str).values
-    
-    # Prepare feature matrix
-    x_features = features.drop(columns=["txId", "Time step"], errors="ignore") \
-                         .apply(pd.to_numeric, errors='coerce') \
+    # --- Prepare feature matrix
+    x_features = features.drop(columns=['txId', 'Time step'], errors='ignore')\
+                         .apply(pd.to_numeric, errors='coerce')\
                          .fillna(0)
-    
-    # Later, align features using tx_ids
-    features_aligned = x_features.copy()
-    features_aligned['txId'] = tx_ids
-    features_aligned = features_aligned.set_index('txId').loc[node_order].drop(columns=['txId']).values
-
-    original_features = x_features.values
 
     # --- Node2Vec embeddings
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -106,11 +97,10 @@ def train_node2vec_rf(features, edges, classes):
 
     embeddings = node2vec.embedding.weight.detach().cpu().numpy()
 
-    # --- Align embeddings, features, and labels using same node order
-    node_order = list(node_id_map.keys())  # order used by Node2Vec
-    features_aligned = x_features.set_index('txId').loc[node_order].values
-    y_aligned = classes.set_index('txId').loc[node_order]['class'].values
-    embeddings_aligned = embeddings  # already in node_order
+    # --- Align features and labels using node_ids
+    features_aligned = x_features.set_index(features['txId']).loc[node_ids].values
+    y_aligned = classes.set_index('txId').loc[node_ids]['class'].values
+    embeddings_aligned = embeddings  # Node2Vec embeddings are already in order
 
     # --- Combine embeddings and features
     X_combined = np.concatenate([embeddings_aligned, features_aligned], axis=1)
@@ -137,18 +127,15 @@ def train_node2vec_rf(features, edges, classes):
     clf.fit(X_train, y_train)
     y_pred = clf.predict(X_test)
 
-    # --- Probabilities for ROC/PR metrics
+    # Probabilities for ROC/PR metrics
     illicit_class_index = list(clf.classes_).index(1)
     y_prob = clf.predict_proba(X_test)[:, illicit_class_index]
 
     print("\n=== Node2Vec + RandomForest ===")
     print(classification_report(y_test, y_pred, digits=4, zero_division=0))
-
-    # Confusion matrix
     cm = pd.crosstab(y_test, y_pred, rownames=['Actual'], colnames=['Predicted'])
     print("\nConfusion matrix:\n", cm)
 
-    # --- Return metrics
     metrics = {
         "Accuracy": accuracy_score(y_test, y_pred),
         "F1 (Illicit)": f1_score(y_test, y_pred, pos_label=1),
@@ -159,6 +146,7 @@ def train_node2vec_rf(features, edges, classes):
     }
 
     return metrics
+
 
 # ============================================================
 # 2️⃣ GRAPH SAGE MODEL
