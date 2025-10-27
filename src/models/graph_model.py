@@ -57,16 +57,25 @@ def train_node2vec_rf(features, edges, classes):
     node_id_map = {id_: i for i, id_ in enumerate(node_ids)}
 
     # --- Build edge index ---
+    # --- 🔍 Debug: Check if edges align correctly ---
     edges = edges[edges['txId1'].isin(node_id_map) & edges['txId2'].isin(node_id_map)]
-    print("Edges before filtering:", len(edges))
-    print("Example txId1:", edges['txId1'].head().tolist())
-    print("Example txId2:", edges['txId2'].head().tolist())
+    print("Edges after filtering:", len(edges))
+    print("Example edges:")
+    print(edges.head())
     print("Node ID map size:", len(node_id_map))
+
 
     edge_index = torch.tensor(
         [[node_id_map[src], node_id_map[dst]] for src, dst in zip(edges['txId1'], edges['txId2'])],
         dtype=torch.long
     ).t().contiguous()
+    print("Edge index shape:", edge_index.shape)
+    if edge_index.numel() == 0:
+        raise ValueError(
+            "❌ Edge index is empty — no valid edges after filtering.\n"
+            "Check if txId columns in features and edges match in type and value."
+        )
+
 
     # --- Prepare features (X) and labels (y) ---
     # Drop the txId column (column 0)
