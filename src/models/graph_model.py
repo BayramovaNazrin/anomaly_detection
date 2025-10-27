@@ -128,26 +128,26 @@ def train_node2vec_rf(features, edges, classes):
             total_loss += loss.item()
         print(f"Node2Vec Epoch {epoch}, Loss: {total_loss:.4f}")
 
-    
-    # Ensure dimensions match before concatenating
+    embeddings = node2vec.embedding.weight.detach().cpu().numpy()
+    original_features = x_features.values
+
+    # --- Align embeddings with existing node IDs ---
     if embeddings.shape[0] != original_features.shape[0]:
-         print(f"Error: Embeddings shape ({embeddings.shape[0]}) != Features shape ({original_features.shape[0]})")
-     # This case should not happen if node_ids alignment is correct
-     # Fallback: align embeddings based on node_id_map (if it maps 0 to N-1)
-     # This is complex. A simple check is better.
-     # For now, we assume alignment is correct.
-         pass
+        print(f"⚠️ Warning: Embeddings ({embeddings.shape[0]}) and features ({original_features.shape[0]}) differ.")
+
+        # Keep only nodes that were actually embedded (present in node2vec)
+        valid_indices = list(range(embeddings.shape[0]))
+        original_features = original_features[:len(valid_indices)]
+        y = y[:len(valid_indices)]
+        train_idx = train_idx[train_idx < len(valid_indices)]
+        val_idx = val_idx[val_idx < len(valid_indices)]
+        test_idx = test_idx[test_idx < len(valid_indices)]
+
+        print(f"Trimmed features to {original_features.shape[0]} samples to match embeddings.")
+
 
     
 
-    # Ensure dimensions match before concatenating
-    if embeddings.shape[0] != original_features.shape[0]:
-         print(f"Error: Embeddings shape ({embeddings.shape[0]}) != Features shape ({original_features.shape[0]})")
-         # This case should not happen if node_ids alignment is correct
-         # Fallback: align embeddings based on node_id_map (if it maps 0 to N-1)
-         # This is complex. A simple check is better.
-         # For now, we assume alignment is correct.
-         pass
          
     X_combined = np.concatenate([embeddings, original_features], axis=1)
 
