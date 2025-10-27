@@ -36,6 +36,13 @@ def train_node2vec_rf(features, edges, classes):
     valid_nodes = classes['txId'].values
     features = features[features["txId"].isin(valid_nodes)]
     node_ids = features["txId"].values
+
+    # --- 🔧 Fix ID types so they match between files ---
+    features['txId'] = features['txId'].astype(str)
+    edges['txId1'] = edges['txId1'].astype(str)
+    edges['txId2'] = edges['txId2'].astype(str)
+    classes['txId'] = classes['txId'].astype(str)
+
     
     # Check if features[0] (txId) is the index or a column.
     # The original code implies it's a column.
