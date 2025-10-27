@@ -84,14 +84,16 @@ def train_node2vec_rf(features, edges, classes):
 
     embeddings = node2vec.embedding.weight.detach().cpu().numpy()
 
-    # --- Align embeddings with node_ids ---
-    embeddings_aligned = embeddings[[node_id_map[id_] for id_ in node_ids]]
-    y_aligned = classes.set_index('txId').loc[node_ids]['class'].values
-
-    # --- Combine embeddings and original features ---
-    X_combined = np.concatenate([embeddings_aligned, original_features], axis=1)
-
-    # --- Split dataset ---
+    # --- Align embeddings with node_ids that exist in edge_index ---
+    embedded_node_ids = [id_ for id_ in node_ids if id_ in node_id_map]
+    embeddings_aligned = embeddings[[node_id_map[id_] for id_ in embedded_node_ids]]
+    features_aligned = x_features.set_index('txId').loc[embedded_node_ids].values
+    y_aligned = classes.set_index('txId').loc[embedded_node_ids]['class'].values
+    
+    # --- Combine embeddings and features ---
+    X_combined = np.concatenate([embeddings_aligned, features_aligned], axis=1)
+    
+    # --- Split indices ---
     node_indices = np.arange(len(y_aligned))
     train_idx, temp_idx, y_train, y_temp = train_test_split(
         node_indices, y_aligned, test_size=0.4, random_state=42, stratify=y_aligned
@@ -99,7 +101,7 @@ def train_node2vec_rf(features, edges, classes):
     val_idx, test_idx, y_val, y_test = train_test_split(
         temp_idx, y_temp, test_size=0.5, random_state=42, stratify=y_temp
     )
-
+    
     X_train = X_combined[train_idx]
     X_val = X_combined[val_idx]
     X_test = X_combined[test_idx]
