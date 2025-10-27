@@ -51,6 +51,11 @@ def train_node2vec_rf(features, edges, classes):
 
     # --- Build edge index ---
     edges = edges[edges['txId1'].isin(node_id_map) & edges['txId2'].isin(node_id_map)]
+    print("Edges before filtering:", len(edges))
+    print("Example txId1:", edges['txId1'].head().tolist())
+    print("Example txId2:", edges['txId2'].head().tolist())
+    print("Node ID map size:", len(node_id_map))
+
     edge_index = torch.tensor(
         [[node_id_map[src], node_id_map[dst]] for src, dst in zip(edges['txId1'], edges['txId2'])],
         dtype=torch.long
