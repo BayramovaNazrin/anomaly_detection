@@ -1,16 +1,155 @@
+# # src/data_loader.py
+# import pandas as pd
+# import matplotlib.pyplot as plt
+# import seaborn as sns
+# import numpy as np
+
+# def load_and_explore_data(features_path, edges_path, classes_path):
+
+#     print("DEBUG paths:", features_path, edges_path, classes_path)
+#     print("DEBUG received paths:")
+#     print("  features_path:", features_path)
+#     print("  edges_path:", edges_path)
+#     print("  classes_path:", classes_path)
+#     # --- Load CSV files ---
+#     features = pd.read_csv(features_path)
+#     edges = pd.read_csv(edges_path)
+#     classes = pd.read_csv(classes_path, header=None)
+
+#     # --- Set proper column names for classes ---
+#     classes.columns = ['txId', 'class']
+
+#     # --- Normalize and clean 'class' column ---
+#     classes['class'] = classes['class'].astype(str).str.strip().replace({'unknown': 3})
+#     features['txId'] = features['txId'].astype(str)
+#     classes['txId'] = classes['txId'].astype(str)
+
+#     # --- Merge ---
+#     merged_df = features.merge(classes, on='txId', how='left')
+#     merged_df['class'] = pd.to_numeric(merged_df['class'], errors='coerce')
+
+#     # === Dataset Summary ===
+#     print("\n=== DATASET SUMMARY ===")
+
+#     num_nodes = features.shape[0]
+#     num_edges = edges.shape[0]
+#     num_transactions = merged_df.shape[0]
+
+#     licit = merged_df['class'].eq(2).sum()
+#     illicit = merged_df['class'].eq(1).sum()
+#     unlabeled = merged_df['class'].eq(3).sum()
+#     nan_count = merged_df['class'].isna().sum()
+
+#     licit_pct = licit / num_nodes * 100
+#     illicit_pct = illicit / num_nodes * 100
+#     unlabeled_pct = unlabeled / num_nodes * 100
+
+#     print(f"Nodes: {num_nodes:,}")
+#     print(f"Edges: {num_edges:,}")
+#     print(f"Transactions: {num_transactions:,}")
+#     print(f"Licit (2): {licit:,} ({licit_pct:.2f}%)")
+#     print(f"Illicit (1): {illicit:,} ({illicit_pct:.2f}%)")
+#     print(f"Unlabeled (3): {unlabeled:,} ({unlabeled_pct:.2f}%)")
+#     print(f"Missing labels: {nan_count:,}\n")
+
+#     # === Missing Values ===
+#     print("=== Missing Values ===")
+#     missing = merged_df.isna().sum()
+#     missing = missing[missing > 0]
+#     if missing.empty:
+#         print("None found ✅")
+#     else:
+#         print(missing)
+
+#     # === Descriptive Stats ===
+#     print("\n=== DESCRIPTIVE STATISTICS ===")
+#     print(features.describe().T, '\n', '-' * 60)
+#     print(edges.describe().T, '\n', '-' * 60)
+#     print(classes.describe().T, '\n', '-' * 60)
+
+#     # === Data Types ===
+#     print("\n=== DATA TYPES ===")
+#     print('Features table:\n', features.dtypes)
+#     print('\nEdges table:\n', edges.dtypes)
+#     print('\nClasses table:\n', classes.dtypes)
+
+#     # === Missing Value Check ===
+#     print("\n=== MISSING VALUE CHECK ===")
+#     print("Features missing:\n", features.isna().sum().sum())
+#     print("Edges missing:\n", edges.isna().sum().sum())
+#     print("Classes missing:\n", classes.isna().sum().sum())
+
+#     # === Visualize Feature Distributions ===
+#     print("\nPlotting feature distributions (first 8 features)...")
+#     features.iloc[:, 2:10].hist(figsize=(10, 6))
+#     plt.tight_layout()
+#     plt.show()
+
+#     # === Correlation Matrix ===
+#     print("\nPlotting correlation heatmap...")
+#     correlation_matrix = features.corr()
+#     plt.figure(figsize=(12, 10))
+#     sns.heatmap(correlation_matrix, annot=False, cmap='coolwarm')
+#     plt.title("Feature Correlation Matrix")
+#     plt.show()
+
+#     print("\n✅ Data loading and summary complete.")
+#     return features, edges, classes, merged_df
 # src/data_loader.py
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+import subprocess
 
-def load_and_explore_data(features_path, edges_path, classes_path):
+# Google Drive folder ID (your dataset)
+GDRIVE_FOLDER_ID = "1MRPXz79Lu_JGLlJ21MDfML44dKN9R08lb"
+LOCAL_DATA_DIR = "data"
 
-    print("DEBUG paths:", features_path, edges_path, classes_path)
-    print("DEBUG received paths:")
+def ensure_dataset_available():
+    """Ensure dataset files exist locally, otherwise download them with gdown."""
+    os.makedirs(LOCAL_DATA_DIR, exist_ok=True)
+
+    expected_files = [
+        "elliptic_txs_features.csv",
+        "elliptic_txs_edgelist.csv",
+        "elliptic_txs_classes.csv",
+    ]
+    missing = [f for f in expected_files if not os.path.exists(os.path.join(LOCAL_DATA_DIR, f))]
+
+    if missing:
+        print("📥 Some dataset files are missing, downloading from Google Drive...")
+        try:
+            subprocess.run([
+                "gdown", "--folder",
+                f"https://drive.google.com/drive/folders/{GDRIVE_FOLDER_ID}",
+                "--no-cookies", "-O", LOCAL_DATA_DIR
+            ], check=True)
+            print("✅ Download complete.")
+        except Exception as e:
+            raise RuntimeError(f"❌ Failed to download dataset: {e}")
+
+    # Validate again
+    for f in expected_files:
+        full_path = os.path.join(LOCAL_DATA_DIR, f)
+        if not os.path.exists(full_path):
+            raise FileNotFoundError(f"❌ Required file missing even after download: {full_path}")
+
+    return [os.path.join(LOCAL_DATA_DIR, f) for f in expected_files]
+
+
+def load_and_explore_data(features_path=None, edges_path=None, classes_path=None):
+    # === Auto-download dataset if paths not provided ===
+    if not (features_path and edges_path and classes_path):
+        print("🔍 No paths provided. Ensuring dataset is available locally...")
+        features_path, edges_path, classes_path = ensure_dataset_available()
+
+    print("DEBUG paths:")
     print("  features_path:", features_path)
     print("  edges_path:", edges_path)
     print("  classes_path:", classes_path)
+
     # --- Load CSV files ---
     features = pd.read_csv(features_path)
     edges = pd.read_csv(edges_path)
