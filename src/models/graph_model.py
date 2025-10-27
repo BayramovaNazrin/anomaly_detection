@@ -39,12 +39,10 @@ def train_node2vec_rf(features, edges, classes):
     """
 
     # --- Filter classes to only include 1 (illicit) and 2 (licit)
-    classes = classes[classes['class'].astype(str).isin(['1','2'])].copy()
+    classes = classes[classes['class'].astype(str).isin(['1', '2'])].copy()
     classes['class'] = classes['class'].astype(int)
 
     # --- Align nodes
-    valid_nodes = classes['txId'].astype(str).values
-    features = features[features["txId"].isin(valid_nodes)].copy()
     features['txId'] = features['txId'].astype(str)
     edges['txId1'] = edges['txId1'].astype(str)
     edges['txId2'] = edges['txId2'].astype(str)
@@ -64,9 +62,14 @@ def train_node2vec_rf(features, edges, classes):
     ).t().contiguous()
 
     # --- Prepare feature matrix
-    x_features = features.drop(columns=['txId', 'Time step'], errors='ignore')\
-                         .apply(pd.to_numeric, errors='coerce')\
+    x_features = features.drop(columns=["txId", "Time step"], errors="ignore") \
+                         .apply(pd.to_numeric, errors='coerce') \
                          .fillna(0)
+
+    # --- Keep only nodes that are in both features and edges
+    valid_node_ids = np.array([nid for nid in node_ids if nid in node_id_map])
+    features_aligned = x_features.set_index(features['txId']).loc[valid_node_ids].values
+    y_aligned = classes.set_index('txId').loc[valid_node_ids]['class'].values
 
     # --- Node2Vec embeddings
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -85,7 +88,7 @@ def train_node2vec_rf(features, edges, classes):
     optimizer = torch.optim.SparseAdam(list(node2vec.parameters()), lr=0.01)
 
     print("Training Node2Vec embeddings...")
-    for epoch in range(1, 6):
+    for epoch in range(1, 6):  # 5 epochs, increase if needed
         total_loss = 0
         for pos_rw, neg_rw in loader:
             optimizer.zero_grad()
@@ -96,16 +99,12 @@ def train_node2vec_rf(features, edges, classes):
         print(f"Epoch {epoch}, Loss: {total_loss:.4f}")
 
     embeddings = node2vec.embedding.weight.detach().cpu().numpy()
+    embeddings_aligned = embeddings[[node_id_map[nid] for nid in valid_node_ids]]
 
-    # --- Align features and labels using node_ids
-    features_aligned = x_features.set_index(features['txId']).loc[node_ids].values
-    y_aligned = classes.set_index('txId').loc[node_ids]['class'].values
-    embeddings_aligned = embeddings  # Node2Vec embeddings are already in order
-
-    # --- Combine embeddings and features
+    # --- Combine embeddings + original features
     X_combined = np.concatenate([embeddings_aligned, features_aligned], axis=1)
 
-    # --- Split indices
+    # --- Split train / val / test
     node_indices = np.arange(len(y_aligned))
     train_idx, temp_idx, y_train, y_temp = train_test_split(
         node_indices, y_aligned, test_size=0.4, random_state=42, stratify=y_aligned
@@ -127,15 +126,18 @@ def train_node2vec_rf(features, edges, classes):
     clf.fit(X_train, y_train)
     y_pred = clf.predict(X_test)
 
-    # Probabilities for ROC/PR metrics
+    # --- Probabilities for ROC/PR metrics
     illicit_class_index = list(clf.classes_).index(1)
     y_prob = clf.predict_proba(X_test)[:, illicit_class_index]
 
     print("\n=== Node2Vec + RandomForest ===")
     print(classification_report(y_test, y_pred, digits=4, zero_division=0))
+
+    # Confusion matrix
     cm = pd.crosstab(y_test, y_pred, rownames=['Actual'], colnames=['Predicted'])
     print("\nConfusion matrix:\n", cm)
 
+    # --- Return metrics
     metrics = {
         "Accuracy": accuracy_score(y_test, y_pred),
         "F1 (Illicit)": f1_score(y_test, y_pred, pos_label=1),
@@ -146,7 +148,6 @@ def train_node2vec_rf(features, edges, classes):
     }
 
     return metrics
-
 
 # ============================================================
 # 2️⃣ GRAPH SAGE MODEL
