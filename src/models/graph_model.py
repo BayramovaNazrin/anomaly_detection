@@ -62,10 +62,19 @@ def train_node2vec_rf(features, edges, classes):
         dtype=torch.long
     ).t().contiguous()
 
-    # --- Prepare feature matrix
+    # Keep txId for alignment
+    tx_ids = features['txId'].astype(str).values
+    
+    # Prepare feature matrix
     x_features = features.drop(columns=["txId", "Time step"], errors="ignore") \
                          .apply(pd.to_numeric, errors='coerce') \
                          .fillna(0)
+    
+    # Later, align features using tx_ids
+    features_aligned = x_features.copy()
+    features_aligned['txId'] = tx_ids
+    features_aligned = features_aligned.set_index('txId').loc[node_order].drop(columns=['txId']).values
+
     original_features = x_features.values
 
     # --- Node2Vec embeddings
