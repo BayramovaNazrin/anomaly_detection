@@ -18,45 +18,57 @@ from sklearn.preprocessing import StandardScaler
 # 1️⃣ NODE2VEC + RANDOM FOREST
 # ============================================================
 
+import torch
+import torch.nn.functional as F
+from torch_geometric.nn import Node2Vec
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import (
+    classification_report, accuracy_score, f1_score, precision_score, recall_score,
+    roc_auc_score, average_precision_score
+)
+import pandas as pd
+import numpy as np
+
+
 def train_node2vec_rf(features, edges, classes):
     """
-    Train Node2Vec embeddings and a RandomForest classifier using
-    pre-loaded dataframes. Returns performance metrics.
+    Train Node2Vec embeddings + RandomForest classifier using pre-loaded dataframes.
+    Returns a dictionary of performance metrics.
     """
 
     # --- Filter classes to only include 1 (illicit) and 2 (licit)
     classes = classes[classes['class'].astype(str).isin(['1', '2'])].copy()
     classes['class'] = classes['class'].astype(int)
 
-    # --- Align nodes ---
-    valid_nodes = classes['txId'].values
+    # --- Align nodes
+    valid_nodes = classes['txId'].astype(str).values
     features = features[features["txId"].isin(valid_nodes)].copy()
-    node_ids = features["txId"].astype(str).values
-
-    # --- Ensure types match ---
+    features['txId'] = features['txId'].astype(str)
     edges['txId1'] = edges['txId1'].astype(str)
     edges['txId2'] = edges['txId2'].astype(str)
     classes['txId'] = classes['txId'].astype(str)
 
-    # --- Build node_id_map ---
+    node_ids = features['txId'].values
     node_id_map = {id_: i for i, id_ in enumerate(node_ids)}
 
-    # --- Filter edges to valid nodes ---
+    # --- Filter edges to valid nodes
     edges = edges[edges['txId1'].isin(node_id_map) & edges['txId2'].isin(node_id_map)]
+    if len(edges) == 0:
+        raise ValueError("❌ No valid edges after filtering. Check txId alignment.")
+
     edge_index = torch.tensor(
         [[node_id_map[src], node_id_map[dst]] for src, dst in zip(edges['txId1'], edges['txId2'])],
         dtype=torch.long
     ).t().contiguous()
-    if edge_index.numel() == 0:
-        raise ValueError("❌ Edge index is empty. Check txId alignment.")
 
-    # --- Prepare feature matrix ---
+    # --- Prepare feature matrix
     x_features = features.drop(columns=["txId", "Time step"], errors="ignore") \
                          .apply(pd.to_numeric, errors='coerce') \
                          .fillna(0)
     original_features = x_features.values
 
-    # --- Node2Vec embeddings ---
+    # --- Node2Vec embeddings
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     node2vec = Node2Vec(
         edge_index=edge_index,
@@ -65,14 +77,15 @@ def train_node2vec_rf(features, edges, classes):
         context_size=10,
         walks_per_node=10,
         num_negative_samples=1,
-        p=1, q=1, sparse=True
+        p=1, q=1,
+        sparse=True
     ).to(device)
 
     loader = node2vec.loader(batch_size=128, shuffle=True, num_workers=2)
     optimizer = torch.optim.SparseAdam(list(node2vec.parameters()), lr=0.01)
 
     print("Training Node2Vec embeddings...")
-    for epoch in range(1, 6):  # 5 epochs (increase if needed)
+    for epoch in range(1, 6):
         total_loss = 0
         for pos_rw, neg_rw in loader:
             optimizer.zero_grad()
@@ -84,16 +97,16 @@ def train_node2vec_rf(features, edges, classes):
 
     embeddings = node2vec.embedding.weight.detach().cpu().numpy()
 
-    # --- Align embeddings with node_ids that exist in edge_index ---
-    embedded_node_ids = [id_ for id_ in node_ids if id_ in node_id_map]
-    embeddings_aligned = embeddings[[node_id_map[id_] for id_ in embedded_node_ids]]
-    features_aligned = x_features.set_index('txId').loc[embedded_node_ids].values
-    y_aligned = classes.set_index('txId').loc[embedded_node_ids]['class'].values
-    
-    # --- Combine embeddings and features ---
+    # --- Align embeddings, features, and labels using same node order
+    node_order = list(node_id_map.keys())  # order used by Node2Vec
+    features_aligned = x_features.set_index('txId').loc[node_order].values
+    y_aligned = classes.set_index('txId').loc[node_order]['class'].values
+    embeddings_aligned = embeddings  # already in node_order
+
+    # --- Combine embeddings and features
     X_combined = np.concatenate([embeddings_aligned, features_aligned], axis=1)
-    
-    # --- Split indices ---
+
+    # --- Split indices
     node_indices = np.arange(len(y_aligned))
     train_idx, temp_idx, y_train, y_temp = train_test_split(
         node_indices, y_aligned, test_size=0.4, random_state=42, stratify=y_aligned
@@ -101,12 +114,12 @@ def train_node2vec_rf(features, edges, classes):
     val_idx, test_idx, y_val, y_test = train_test_split(
         temp_idx, y_temp, test_size=0.5, random_state=42, stratify=y_temp
     )
-    
+
     X_train = X_combined[train_idx]
     X_val = X_combined[val_idx]
     X_test = X_combined[test_idx]
 
-    # --- Train RandomForest ---
+    # --- Train RandomForest
     print("Training RandomForest on Node2Vec features...")
     clf = RandomForestClassifier(
         n_estimators=500, random_state=42,
@@ -115,7 +128,7 @@ def train_node2vec_rf(features, edges, classes):
     clf.fit(X_train, y_train)
     y_pred = clf.predict(X_test)
 
-    # Probabilities for ROC/PR metrics
+    # --- Probabilities for ROC/PR metrics
     illicit_class_index = list(clf.classes_).index(1)
     y_prob = clf.predict_proba(X_test)[:, illicit_class_index]
 
@@ -123,11 +136,10 @@ def train_node2vec_rf(features, edges, classes):
     print(classification_report(y_test, y_pred, digits=4, zero_division=0))
 
     # Confusion matrix
-    import pandas as pd
     cm = pd.crosstab(y_test, y_pred, rownames=['Actual'], colnames=['Predicted'])
     print("\nConfusion matrix:\n", cm)
 
-    # --- Return metrics ---
+    # --- Return metrics
     metrics = {
         "Accuracy": accuracy_score(y_test, y_pred),
         "F1 (Illicit)": f1_score(y_test, y_pred, pos_label=1),
@@ -138,7 +150,6 @@ def train_node2vec_rf(features, edges, classes):
     }
 
     return metrics
-
 
 # ============================================================
 # 2️⃣ GRAPH SAGE MODEL
